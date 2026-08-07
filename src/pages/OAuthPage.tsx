@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { IconPlug } from '@/components/ui/icons';
 import { useAuthStore, useNotificationStore, useThemeStore } from '@/stores';
 import { oauthApi, pluginsApi, type BuiltInOAuthProvider } from '@/services/api';
@@ -11,6 +12,12 @@ import { vertexApi, type VertexImportResponse } from '@/services/api/vertex';
 import { copyToClipboard } from '@/utils/clipboard';
 import { getErrorMessage, isRecord } from '@/utils/helpers';
 import { notifyAuthFilesChanged } from '@/features/authFiles/authFilesEvents';
+import {
+  loadAnthropicLoginMode,
+  readAnthropicLoginMode,
+  saveAnthropicLoginMode,
+  type AnthropicLoginMode,
+} from '@/features/oauth/loginMode';
 import { getPluginTitle, resolvePluginAssetURL } from '@/features/plugins/pluginResources';
 import {
   KIMI_CHINESE_AFFILIATE_URL,
@@ -45,6 +52,8 @@ interface ProviderState {
   callbackSubmitting?: boolean;
   callbackStatus?: 'success' | 'error';
   callbackError?: string;
+  /** Whether the started flow uses the provider's manual redirect. */
+  manual?: boolean;
 }
 
 interface VertexImportResult {
@@ -138,6 +147,7 @@ const PROVIDERS: BuiltInOAuthProviderCard[] = [
 const BUILTIN_PROVIDER_IDS = new Set<string>(PROVIDERS.map((provider) => provider.id));
 const CALLBACK_SUPPORTED = new Set<string>(['codex', 'anthropic', 'antigravity', 'xai', 'devin']);
 const XAI_CALLBACK_URL = 'http://127.0.0.1:56121/callback';
+const MANUAL_MODE_PROVIDER = 'anthropic';
 const SUCCESS_RESET_DELAY_MS = 5000;
 const getProviderI18nPrefix = (provider: string) => provider.replace('-', '_');
 const getAuthKey = (provider: string, suffix: string) =>
@@ -275,6 +285,8 @@ export function OAuthPage() {
   const { showNotification } = useNotificationStore();
   const resolvedTheme = useThemeStore((state) => state.resolvedTheme);
   const [states, setStates] = useState<Record<string, ProviderState>>({});
+  const [anthropicLoginMode, setAnthropicLoginMode] =
+    useState<AnthropicLoginMode>(loadAnthropicLoginMode);
   const [pluginProviders, setPluginProviders] = useState<PluginOAuthProviderCard[]>([]);
   const [vertexState, setVertexState] = useState<VertexImportState>({
     fileName: '',
@@ -488,9 +500,14 @@ export function OAuthPage() {
       callbackError: undefined,
       callbackUrl: '',
       callbackSubmitting: false,
+      manual: undefined,
     });
     try {
-      const res = await oauthApi.startAuth(provider, attempt.signal);
+      const res = await oauthApi.startAuth(
+        provider,
+        attempt.signal,
+        provider === MANUAL_MODE_PROVIDER ? { manual: anthropicLoginMode === 'manual' } : undefined
+      );
       if (!attempt.isCurrent()) return;
       if (!res.state) {
         const message = t('auth_login.missing_state');
@@ -510,6 +527,7 @@ export function OAuthPage() {
         state: res.state,
         status: 'waiting',
         polling: true,
+        manual: res.manual,
       });
       startPolling(provider, res.state, attempt);
     } catch (err: unknown) {
@@ -547,7 +565,9 @@ export function OAuthPage() {
         t(
           provider === 'xai'
             ? 'auth_login.xai_callback_required'
-            : 'auth_login.oauth_callback_required'
+            : states[provider]?.manual
+              ? 'auth_login.anthropic_manual_code_required'
+              : 'auth_login.oauth_callback_required'
         ),
         'warning'
       );
@@ -667,6 +687,10 @@ export function OAuthPage() {
       featured && provider.kind === 'builtin' && ['kimi', 'kimi-ai'].includes(provider.id);
     const canSubmitCallback =
       (provider.kind === 'plugin' || CALLBACK_SUPPORTED.has(provider.id)) && Boolean(state.url);
+    const showLoginModeSelect = provider.kind === 'builtin' && provider.id === MANUAL_MODE_PROVIDER;
+    // The started flow wins over the current selection, so the hints keep matching
+    // the URL on screen even if the selector is changed afterwards.
+    const isManualFlow = showLoginModeSelect && (state.manual ?? anthropicLoginMode === 'manual');
     const loginButtonLabel =
       state.status === 'success'
         ? t('auth_login.login_another_account')
@@ -724,6 +748,34 @@ export function OAuthPage() {
           <div className={featured ? styles.featuredHint : styles.cardHint}>
             {getProviderText(provider, 'oauth_hint')}
           </div>
+          {showLoginModeSelect && (
+            <div className={styles.formItem}>
+              <label className={styles.formItemLabel} htmlFor="anthropic-login-mode">
+                {t('auth_login.anthropic_login_mode_label')}
+              </label>
+              <Select
+                id="anthropic-login-mode"
+                value={anthropicLoginMode}
+                disabled={state.polling}
+                onChange={(value) => {
+                  const nextMode = readAnthropicLoginMode(value);
+                  setAnthropicLoginMode(nextMode);
+                  saveAnthropicLoginMode(nextMode);
+                }}
+                options={[
+                  { value: 'local', label: t('auth_login.anthropic_login_mode_local') },
+                  { value: 'manual', label: t('auth_login.anthropic_login_mode_manual') },
+                ]}
+              />
+              <div className={styles.cardHintSecondary}>
+                {t(
+                  anthropicLoginMode === 'manual'
+                    ? 'auth_login.anthropic_login_mode_manual_hint'
+                    : 'auth_login.anthropic_login_mode_local_hint'
+                )}
+              </div>
+            </div>
+          )}
           {state.url && (
             <div className={styles.authUrlBox}>
               <div className={styles.authUrlLabel}>
@@ -779,14 +831,18 @@ export function OAuthPage() {
                 label={t(
                   provider.id === 'xai'
                     ? 'auth_login.xai_callback_label'
-                    : 'auth_login.oauth_callback_label'
+                    : isManualFlow
+                      ? 'auth_login.anthropic_manual_code_label'
+                      : 'auth_login.oauth_callback_label'
                 )}
                 hint={t(
                   provider.id === 'xai'
                     ? 'auth_login.xai_callback_hint'
                     : provider.id === 'devin'
                       ? 'auth_login.devin_callback_hint'
-                      : 'auth_login.oauth_callback_hint'
+                      : isManualFlow
+                        ? 'auth_login.anthropic_manual_code_hint'
+                        : 'auth_login.oauth_callback_hint'
                 )}
                 disabled={
                   provider.id === 'devin' && (state.cancelling || state.status !== 'waiting')
@@ -804,7 +860,9 @@ export function OAuthPage() {
                     ? 'auth_login.xai_callback_placeholder'
                     : provider.id === 'devin'
                       ? 'auth_login.devin_callback_placeholder'
-                      : 'auth_login.oauth_callback_placeholder'
+                      : isManualFlow
+                        ? 'auth_login.anthropic_manual_code_placeholder'
+                        : 'auth_login.oauth_callback_placeholder'
                 )}
               />
               <div className={styles.callbackActions}>
@@ -817,7 +875,11 @@ export function OAuthPage() {
                     provider.id === 'devin' && (state.cancelling || state.status !== 'waiting')
                   }
                 >
-                  {t('auth_login.oauth_callback_button')}
+                  {t(
+                    isManualFlow
+                      ? 'auth_login.anthropic_manual_code_button'
+                      : 'auth_login.oauth_callback_button'
+                  )}
                 </Button>
               </div>
               {state.callbackStatus === 'success' && state.status === 'waiting' && (

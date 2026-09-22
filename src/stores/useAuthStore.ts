@@ -47,6 +47,21 @@ export const useAuthStore = create<AuthStoreState>()(
         if (restoreSessionPromise) return restoreSessionPromise;
 
         restoreSessionPromise = (async () => {
+          if (import.meta.env.VITE_GITHUB_LOGIN === '1') {
+            try {
+              const response = await fetch('/auth/session', { credentials: 'same-origin' });
+              if (!response.ok) return false;
+              await get().login({
+                apiBase: window.location.origin,
+                managementKey: 'github-session',
+                rememberPassword: false,
+              });
+              obfuscatedStorage.removeItem('managementKey');
+              return true;
+            } catch {
+              return false;
+            }
+          }
           obfuscatedStorage.migratePlaintextKeys(['apiBase', 'apiUrl', 'managementKey']);
 
           const wasLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
@@ -150,6 +165,11 @@ export const useAuthStore = create<AuthStoreState>()(
 
       // 登出
       logout: () => {
+        if (import.meta.env.VITE_GITHUB_LOGIN === '1') {
+          void fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => {
+            window.location.assign('/auth/login?next=/management.html');
+          });
+        }
         restoreSessionPromise = null;
         apiClient.setConfig({ apiBase: '', managementKey: '' });
         useConfigStore.getState().clearCache();

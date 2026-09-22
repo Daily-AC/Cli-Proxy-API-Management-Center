@@ -161,6 +161,10 @@ bun run dev
 
 </details>
 
+## 本机 GitHub 登录部署
+
+使用 `VITE_GITHUB_LOGIN=1 bun run build` 构建 GitHub 登录版本，部署在 `api.z10.dev/management.html`。前端从同源 `/auth/session` 恢复会话，退出调用 `/auth/logout`；管理密钥由服务器的登录代理注入，不交给浏览器。普通构建仍可用于直接连接其他 CLIProxyAPI 实例。部署文件真源见相邻 homelab 仓库的 `hk/github-admin`。
+
 ---
 
 <div align="center">

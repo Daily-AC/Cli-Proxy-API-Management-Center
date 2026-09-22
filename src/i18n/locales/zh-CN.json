@@ -86,7 +86,8 @@
     "error_not_found": "未找到 Management API，请确认服务地址指向 CLIProxyAPI 后端",
     "error_server": "后端处理管理接口时发生错误，请查看服务日志",
     "error_cors": "跨域请求被阻止，请检查服务器配置",
-    "error_ssl": "SSL/TLS 证书验证失败"
+    "error_ssl": "SSL/TLS 证书验证失败",
+    "github_sign_in": "用 GitHub 登录"
   },
   "header": {
     "refresh_all": "刷新全部",

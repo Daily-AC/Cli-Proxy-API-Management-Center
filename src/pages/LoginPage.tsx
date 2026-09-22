@@ -200,6 +200,19 @@ export function LoginPage() {
     return <Navigate to={redirect} replace />;
   }
 
+  if (import.meta.env.VITE_GITHUB_LOGIN === '1' && !autoLoading && !autoLoginSuccess) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.formPanel}>
+          <div className={styles.loginCard}>
+            <h1>{t('splash.title')}</h1>
+            <a href="/auth/login?next=/management.html">{t('login.github_sign_in')}</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // 显示启动动画（自动登录中或自动登录成功）
   const showSplash = autoLoading || autoLoginSuccess;
 

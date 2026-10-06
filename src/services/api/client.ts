@@ -13,12 +13,23 @@ import {
   REQUEST_TIMEOUT_MS,
   VERSION_HEADER_KEYS,
 } from '@/utils/constants';
-import { computeApiUrl } from '@/utils/connection';
+import { computeApiUrl, normalizeApiBase } from '@/utils/connection';
 import { parseApiErrorResponse } from './apiError';
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    /**
+     * Resolve `url` against the server root (the connection's API base) instead of the
+     * Management API prefix. Authentication, error handling and events stay the same.
+     */
+    serverRoot?: boolean;
+  }
+}
 
 class ApiClient {
   private instance: AxiosInstance;
   private apiBase: string = '';
+  private serverBase: string = '';
   private managementKey: string = '';
   private connectionRevision = 0;
 
@@ -42,6 +53,7 @@ class ApiClient {
       this.connectionRevision += 1;
     }
     this.apiBase = apiBase;
+    this.serverBase = normalizeApiBase(config.apiBase);
     this.managementKey = config.managementKey;
 
     if (config.timeout) {
@@ -115,7 +127,7 @@ class ApiClient {
     this.instance.interceptors.request.use(
       (config) => {
         // 设置 baseURL
-        config.baseURL = this.apiBase;
+        config.baseURL = config.serverRoot ? this.serverBase : this.apiBase;
 
         // 添加认证头
         if (this.managementKey) {

@@ -35,7 +35,8 @@ export const getFriendStatus = (
 // ── Form ──────────────────────────────────────────────────
 
 /** Same rule as the backend's friends.yaml validation. */
-export const FRIEND_NAME_RE = /^[A-Za-z0-9._-]{1,64}$/;
+/** Mirrors the server: Unicode letters and digits plus `._-`, up to 64, not only dots. */
+export const FRIEND_NAME_RE = /^(?!\.+$)[\p{L}\p{N}_.-]{1,64}$/u;
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export interface FriendFormValues {

@@ -85,6 +85,12 @@ describe('friend form', () => {
       validateFriendForm({ name: 'x'.repeat(65), channels: ['DeepSeek'], expires: '' }, create).name
     ).toBe('friend_keys.error_name_invalid');
     expect(
+      validateFriendForm({ name: '..', channels: ['DeepSeek'], expires: '' }, create).name
+    ).toBe('friend_keys.error_name_invalid');
+    expect(
+      validateFriendForm({ name: '小明', channels: ['DeepSeek'], expires: '' }, create).name
+    ).toBeUndefined();
+    expect(
       validateFriendForm({ name: 'bob', channels: ['DeepSeek'], expires: '' }, create).name
     ).toBe('friend_keys.error_name_taken');
     expect(

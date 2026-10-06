@@ -194,7 +194,8 @@ export function FriendKeysPage() {
       <>
         {t('friend_keys.last_used')}{' '}
         <strong title={new Date(ms).toLocaleString(i18n.resolvedLanguage)}>
-          {formatRelativeInstant(ms, now, i18n.resolvedLanguage)}
+          {/* Clamp to now: a server clock slightly ahead must not read as a future use. */}
+          {formatRelativeInstant(Math.min(ms, now), now, i18n.resolvedLanguage)}
         </strong>
       </>
     );

@@ -1762,6 +1762,7 @@
     "empty_src_desc": "该插件菜单未提供可嵌入的页面地址。"
   },
   "friend_keys": {
+    "just_now": "刚刚",
     "title": "朋友 Key",
     "description": "给朋友发独立的 API Key：只能调用你选定渠道的模型，用量单独统计，可以随时停用。",
     "create": "新建",

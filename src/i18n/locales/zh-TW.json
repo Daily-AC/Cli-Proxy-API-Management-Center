@@ -1788,6 +1788,7 @@
     "empty_src_desc": "此插件選單未提供可嵌入的頁面位址。"
   },
   "friend_keys": {
+    "just_now": "剛剛",
     "title": "朋友 Key",
     "description": "給朋友發獨立的 API Key：只能呼叫你選定通道的模型，用量單獨統計，可以隨時停用。",
     "create": "新增",

@@ -194,8 +194,11 @@ export function FriendKeysPage() {
       <>
         {t('friend_keys.last_used')}{' '}
         <strong title={new Date(ms).toLocaleString(i18n.resolvedLanguage)}>
-          {/* Clamp to now: a server clock slightly ahead must not read as a future use. */}
-          {formatRelativeInstant(Math.min(ms, now), now, i18n.resolvedLanguage)}
+          {/* The minute clock lags and server clocks drift, so anything under a minute
+              (including slightly "future" stamps) reads as just now. */}
+          {now - ms < 60_000
+            ? t('friend_keys.just_now')
+            : formatRelativeInstant(ms, now, i18n.resolvedLanguage)}
         </strong>
       </>
     );

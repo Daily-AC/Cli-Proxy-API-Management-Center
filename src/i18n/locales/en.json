@@ -1764,6 +1764,7 @@
     "empty_src_desc": "This plugin menu does not provide an embeddable page URL."
   },
   "friend_keys": {
+    "just_now": "just now",
     "title": "Friend Keys",
     "description": "Give a friend their own API key: it can only call models from the channels you choose, its usage is tracked separately, and you can turn it off at any time.",
     "create": "New",
